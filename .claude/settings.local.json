@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init *)",
+      "Bash(npx create-next-app@latest . --js --eslint --tailwind --src-dir --app --no-import-alias --yes)",
+      "Bash(mkdir -p /c/Users/david/AppData/Local/Temp/claude/C--codingt2/7508bcdc-2a89-4a88-98db-fad53dba8ae1/scratchpad)",
+      "Bash(mv ola.txt /c/Users/david/AppData/Local/Temp/claude/C--codingt2/7508bcdc-2a89-4a88-98db-fad53dba8ae1/scratchpad/ola.txt)",
+      "Bash(mv /c/Users/david/AppData/Local/Temp/claude/C--codingt2/7508bcdc-2a89-4a88-98db-fad53dba8ae1/scratchpad/ola.txt ola.txt)",
+      "Bash(npm test *)",
+      "Bash(git add *)",
+      "Bash(git commit -q -m 'Primeiro commit: projeto Next.js com Vitest e estrutura em camadas *)"
+    ]
+  }
+}

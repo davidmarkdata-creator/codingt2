@@ -3,7 +3,7 @@
 import { useState } from "react";
 import FormularioReserva from "./FormularioReserva";
 
-export default function CartaoSala({ nome, capacidade }) {
+export default function CartaoSala({ id, nome, capacidade }) {
   const [aReservar, setAReservar] = useState(false);
 
   return (
@@ -35,6 +35,7 @@ export default function CartaoSala({ nome, capacidade }) {
       </div>
       {aReservar && (
         <FormularioReserva
+          salaId={id}
           nomeSala={nome}
           onFechar={() => setAReservar(false)}
         />

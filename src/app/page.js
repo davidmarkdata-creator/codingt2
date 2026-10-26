@@ -1,7 +1,7 @@
 import Link from "next/link";
 import CartaoSala from "../components/CartaoSala";
 
-// Dados de exemplo fixos: ainda não há lógica nem base de dados.
+// Dados de exemplo fixos. Os ids têm de coincidir com src/persistencia/salasExemplo.js.
 const SALAS = [
   { id: 1, nome: "Sala Atlântico", capacidade: 12 },
   { id: 2, nome: "Sala Douro", capacidade: 6 },
@@ -31,6 +31,7 @@ export default function Home() {
           {SALAS.map((sala) => (
             <CartaoSala
               key={sala.id}
+              id={sala.id}
               nome={sala.nome}
               capacidade={sala.capacidade}
             />

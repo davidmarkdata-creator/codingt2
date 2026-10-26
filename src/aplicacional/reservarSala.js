@@ -1,7 +1,9 @@
 import { Reserva } from "../dominio/reserva";
 import { temSobreposicao } from "../dominio/sobreposicao";
+import { excedeDuracaoMaxima } from "../dominio/duracao";
 
 const ERRO_SALA_INEXISTENTE = "Sala não encontrada.";
+const ERRO_DURACAO = "A reserva não pode durar mais de 2 horas.";
 const ERRO_OCUPADA = "A sala já tem uma reserva nesse horário.";
 const ERRO_REPOSITORIO = "Não foi possível guardar a reserva.";
 
@@ -19,8 +21,12 @@ export async function reservarSala({ salaId, inicio, fim }, repositorio) {
       return { sucesso: false, erro: ERRO_SALA_INEXISTENTE };
     }
 
-    const reservasDaSala = await repositorio.listarReservasDaSala(salaId);
     const nova = new Reserva({ salaId, inicio, fim });
+    if (excedeDuracaoMaxima(nova)) {
+      return { sucesso: false, erro: ERRO_DURACAO };
+    }
+
+    const reservasDaSala = await repositorio.listarReservasDaSala(salaId);
     if (temSobreposicao(nova, reservasDaSala)) {
       return { sucesso: false, erro: ERRO_OCUPADA };
     }

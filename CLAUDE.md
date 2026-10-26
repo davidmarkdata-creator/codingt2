@@ -19,6 +19,14 @@ A app está organizada em: apresentação, aplicacional, dominio e persistencia.
   - Exceção: um único ficheiro de composição (ex.: `src/app/actions.js`) cria o repositório e entrega-o aos casos de uso. É o único sítio da apresentação que importa de `src/persistencia/`.
 - As chamadas à base de dados só existem na camada `persistencia/`.
 
+### Casos de uso e Server Actions
+- Os erros de negócio (ex.: sala ocupada) devolvem-se como resultado — `{ sucesso: true, ... }` ou `{ sucesso: false, erro }` — com a mensagem em português de Portugal, e não como exceção.
+- As Server Actions ficam em `src/app/actions.js` e devolvem ao browser só dados simples, nunca entidades nem `Date`. Depois de as alterar, confirmar que o código do servidor não aparece no JavaScript enviado ao browser.
+
+## Datas e horas
+- No domínio e na camada aplicacional, as datas são `Date` em UTC.
+- A conversão da hora de Lisboa faz-se só na apresentação (`src/app/horaLisboa.js`): uma hora que não existe (mudança de março) dá erro; uma hora repetida (mudança de outubro) usa a primeira ocorrência.
+
 ## Interface
 - Textos da interface em português de Portugal; datas no formato dd/mm/aaaa.
 - Nomes de componentes em português e PascalCase (ex.: `CartaoSala`); rotas em português e kebab-case (ex.: `/minhas-reservas`).
@@ -31,11 +39,13 @@ A app está organizada em: apresentação, aplicacional, dominio e persistencia.
 
 ## Testes
 - A lógica de domínio, aplicacional e persistência só está concluída com testes validados. Um `npm run test` sem testes não conta como validação: cada regra de domínio e caso de uso precisa de testes próprios.
-- Não alterar os testes somente para os fazer validar.
+- Nessas camadas, escrever primeiro os testes e mostrá-los a falhar antes de implementar.
+- Não alterar os testes somente para os fazer validar. Para alterar um teste existente por outro motivo, explicar porquê antes de o fazer.
 
 ## Fluxo de trabalho
-- Antes de implementar, apresentar sempre um plano curto e esperar pela aprovação explícita. Só se dispensa a aprovação em correções mesmo simples.
+- Antes de implementar, apresentar sempre um plano curto e esperar pela aprovação explícita. Os passos que o pedido indica explicitamente já contam como aprovados; decisões importantes que o pedido não tome, ou trabalho fora do âmbito, continuam a precisar de aprovação. Só se dispensa a aprovação em correções mesmo simples.
 - Seguir à letra comandos, flags e formatos indicados no pedido. Se houver uma alternativa melhor, propô-la e esperar por resposta explícita.
+- Não acrescentar regras, validações ou casos de teste que não tenham sido pedidos; se fizerem falta, propô-los à parte.
 - Antes de instalar uma dependência, indicar qual é e para que serve.
 - Avisar antes de criar ficheiros de configuração ou de ferramentas fora do pedido (ex.: `.claude/launch.json`).
 - Antes de dar uma tarefa por concluída, correr `npm run test`, `npm run lint` e `npm run build`.

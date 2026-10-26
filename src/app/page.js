@@ -1,3 +1,4 @@
+import Link from "next/link";
 import CartaoSala from "../components/CartaoSala";
 
 // Dados de exemplo fixos: ainda não há lógica nem base de dados.
@@ -19,6 +20,12 @@ export default function Home() {
           <p className="mt-1 text-base text-zinc-600 dark:text-zinc-400">
             Escolha uma sala para fazer a reserva.
           </p>
+          <Link
+            href="/minhas-reservas"
+            className="mt-3 inline-flex min-h-11 items-center text-base font-medium text-zinc-900 underline underline-offset-4 hover:text-zinc-600 sm:text-sm dark:text-zinc-50 dark:hover:text-zinc-300"
+          >
+            As minhas reservas →
+          </Link>
         </header>
         <ul className="flex flex-col gap-3 sm:gap-4">
           {SALAS.map((sala) => (

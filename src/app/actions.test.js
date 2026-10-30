@@ -85,13 +85,21 @@ describe("obterReservas", () => {
       ],
     });
 
-    const resultado = await obterReservas();
+    // Relógio fixo: "podeCancelar" depende do momento atual (só reservas futuras).
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-30T12:00:00Z"));
+    let resultado;
+    try {
+      resultado = await obterReservas();
+    } finally {
+      vi.useRealTimers();
+    }
 
     expect(resultado).toEqual({
       sucesso: true,
       reservas: [
-        { id: "uuid-r1", nomeSala: "Sala A", data: "10/07/2026", inicio: "10:00", fim: "11:00" },
-        { id: "uuid-r2", nomeSala: "Sala B", data: "03/11/2026", inicio: "10:00", fim: "11:30" },
+        { id: "uuid-r1", nomeSala: "Sala A", data: "10/07/2026", inicio: "10:00", fim: "11:00", podeCancelar: false },
+        { id: "uuid-r2", nomeSala: "Sala B", data: "03/11/2026", inicio: "10:00", fim: "11:30", podeCancelar: true },
       ],
     });
     soDadosSimples(resultado);

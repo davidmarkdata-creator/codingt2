@@ -2,14 +2,17 @@
 
 // Ficheiro de composição: cria o repositório e entrega-o aos casos de uso.
 // É o único sítio da apresentação que importa de src/persistencia/.
+import { refresh } from "next/cache";
 import { reservarSala } from "../aplicacional/reservarSala";
 import { listarSalas } from "../aplicacional/listarSalas";
 import { listarReservas } from "../aplicacional/listarReservas";
+import { cancelarReserva, podeSerCancelada } from "../aplicacional/cancelarReserva";
 import { criarLigacao } from "../persistencia/ligacao";
 import { criarRepositorioPostgres } from "../persistencia/repositorioPostgres";
 import { lisboaParaUtc, formatarEmLisboa } from "./horaLisboa";
 
 const ERRO_GUARDAR = "Não foi possível guardar a reserva.";
+const ERRO_CANCELAR = "Não foi possível cancelar a reserva.";
 const ERRO_CARREGAR_SALAS = "Não foi possível carregar as salas.";
 const ERRO_CARREGAR_RESERVAS = "Não foi possível carregar as reservas.";
 
@@ -95,6 +98,8 @@ export async function obterReservas() {
           data: inicio.data,
           inicio: inicio.hora,
           fim: fim.hora,
+          // Só para mostrar o botão; o servidor volta a verificar ao cancelar.
+          podeCancelar: podeSerCancelada(reserva),
         };
       }),
     };
@@ -102,4 +107,26 @@ export async function obterReservas() {
     registarErro("Carregar reservas", erro);
     return { sucesso: false, erro: ERRO_CARREGAR_RESERVAS };
   }
+}
+
+export async function cancelarReservaAction(_estadoAnterior, formData) {
+  // O id da reserva é um UUID (texto).
+  const reservaId = formData.get("reservaId");
+
+  let repositorioAtual;
+  try {
+    repositorioAtual = obterRepositorio();
+  } catch (erro) {
+    registarErro("Cancelar reserva: sem ligação à base de dados", erro);
+    return { sucesso: false, erro: ERRO_CANCELAR };
+  }
+
+  // A regra "só reservas futuras" é verificada no servidor, também no momento
+  // da eliminação (não depende de o botão estar visível).
+  const resultado = await cancelarReserva({ reservaId }, repositorioAtual);
+  if (!resultado.sucesso) return { sucesso: false, erro: resultado.erro };
+
+  // Volta a carregar "As minhas reservas" já sem a reserva cancelada.
+  refresh();
+  return { sucesso: true };
 }

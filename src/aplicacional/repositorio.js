@@ -13,6 +13,8 @@
  * @property {() => Promise<Reserva[]>} listarReservas Todas as reservas.
  * @property {(salaId: string) => Promise<Reserva[]>} listarReservasDaSala As reservas de uma sala (salaId: UUID).
  * @property {(reserva: Reserva) => Promise<Reserva>} guardarReserva Guarda uma reserva nova e devolve-a já com id.
+ * @property {(id: string) => Promise<Reserva | null>} obterReserva Uma reserva pelo id, ou null se não existir.
+ * @property {(id: string, agora: Date) => Promise<boolean>} apagarReserva Apaga a reserva só se o início for depois de `agora`; devolve true se apagou.
  */
 
 export {};

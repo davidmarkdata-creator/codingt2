@@ -29,6 +29,8 @@ async function ListaReservas() {
       {resultado.reservas.map((reserva) => (
         <CartaoReserva
           key={reserva.id}
+          id={reserva.id}
+          podeCancelar={reserva.podeCancelar}
           nomeSala={reserva.nomeSala}
           data={reserva.data}
           inicio={reserva.inicio}

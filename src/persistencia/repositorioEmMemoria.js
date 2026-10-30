@@ -31,5 +31,19 @@ export function criarRepositorioEmMemoria({ salas = [], reservas = [] } = {}) {
       reservasGuardadas.push(guardada);
       return guardada;
     },
+
+    async obterReserva(id) {
+      return reservasGuardadas.find((r) => r.id === id) ?? null;
+    },
+
+    // Só apaga se ainda não tiver começado (verificado no momento da eliminação).
+    async apagarReserva(id, agora) {
+      const posicao = reservasGuardadas.findIndex(
+        (r) => r.id === id && r.inicio.getTime() > agora.getTime()
+      );
+      if (posicao === -1) return false;
+      reservasGuardadas.splice(posicao, 1);
+      return true;
+    },
   };
 }

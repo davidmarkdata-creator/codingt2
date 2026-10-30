@@ -17,6 +17,13 @@ const SQL_LISTAR_RESERVAS_DA_SALA =
 const SQL_GUARDAR_RESERVA =
   "INSERT INTO reservas (sala_id, inicio, fim) VALUES ($1, $2, $3) RETURNING id, sala_id, inicio, fim";
 
+const SQL_OBTER_RESERVA =
+  "SELECT id, sala_id, inicio, fim FROM reservas WHERE id = $1";
+
+// A condição "inicio > $2" faz a verificação no próprio momento da eliminação.
+const SQL_APAGAR_RESERVA_FUTURA =
+  "DELETE FROM reservas WHERE id = $1 AND inicio > $2 RETURNING id";
+
 // 23P01 = violação de uma restrição EXCLUDE.
 const VIOLACAO_EXCLUSAO = "23P01";
 const RESTRICAO_SEM_SOBREPOSICAO = "reservas_sem_sobreposicao";
@@ -72,6 +79,16 @@ export function criarRepositorioPostgres(ligacao) {
         }
         throw erro;
       }
+    },
+
+    async obterReserva(id) {
+      const { rows } = await ligacao.consultar(SQL_OBTER_RESERVA, [id]);
+      return rows.length > 0 ? paraReserva(rows[0]) : null;
+    },
+
+    async apagarReserva(id, agora) {
+      const { rows } = await ligacao.consultar(SQL_APAGAR_RESERVA_FUTURA, [id, agora]);
+      return rows.length === 1;
     },
   };
 }

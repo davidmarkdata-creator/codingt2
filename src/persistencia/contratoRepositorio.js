@@ -129,5 +129,42 @@ export function descreverContratoRepositorio(nome, preparar) {
         }
       }
     });
+
+    it("obtém uma reserva pelo id, e null depois de apagada", async () => {
+      const [sala] = contexto.salas;
+      const inicio = new Date("2026-11-05T10:00:00.000Z");
+      const fim = new Date("2026-11-05T11:00:00.000Z");
+      const guardada = await guardar(sala.id, inicio, fim);
+
+      const lida = await contexto.repositorio.obterReserva(guardada.id);
+      expect(lida.id).toEqual(guardada.id);
+      expect(lida.salaId).toEqual(sala.id);
+      expect(lida.inicio.getTime()).toBe(inicio.getTime());
+      expect(lida.fim.getTime()).toBe(fim.getTime());
+
+      await contexto.repositorio.apagarReserva(guardada.id, new Date("2026-11-05T09:00:00.000Z"));
+      expect(await contexto.repositorio.obterReserva(guardada.id)).toBeNull();
+    });
+
+    it("apaga só reservas futuras, verificando no momento da eliminação", async () => {
+      const [sala] = contexto.salas;
+      const futura = await guardar(
+        sala.id,
+        new Date("2026-11-05T12:00:00.000Z"),
+        new Date("2026-11-05T13:00:00.000Z")
+      );
+      const aComecar = await guardar(
+        sala.id,
+        new Date("2026-11-05T14:00:00.000Z"),
+        new Date("2026-11-05T15:00:00.000Z")
+      );
+
+      expect(await contexto.repositorio.apagarReserva(futura.id, new Date("2026-11-05T11:59:00.000Z"))).toBe(true);
+      expect(await contexto.repositorio.obterReserva(futura.id)).toBeNull();
+
+      // Começa exatamente "agora": já não pode ser apagada.
+      expect(await contexto.repositorio.apagarReserva(aComecar.id, new Date("2026-11-05T14:00:00.000Z"))).toBe(false);
+      expect(await contexto.repositorio.obterReserva(aComecar.id)).not.toBeNull();
+    });
   });
 }

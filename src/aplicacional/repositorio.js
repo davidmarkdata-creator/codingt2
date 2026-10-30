@@ -11,7 +11,7 @@
  * @typedef {object} Repositorio
  * @property {() => Promise<Sala[]>} listarSalas Todas as salas.
  * @property {() => Promise<Reserva[]>} listarReservas Todas as reservas.
- * @property {(salaId: number) => Promise<Reserva[]>} listarReservasDaSala As reservas de uma sala.
+ * @property {(salaId: string) => Promise<Reserva[]>} listarReservasDaSala As reservas de uma sala (salaId: UUID).
  * @property {(reserva: Reserva) => Promise<Reserva>} guardarReserva Guarda uma reserva nova e devolve-a já com id.
  */
 

@@ -14,7 +14,7 @@ const ERRO_REPOSITORIO = "Não foi possível guardar a reserva.";
  * Caso de uso "Reservar sala". Nunca lança exceções: devolve sempre
  * { sucesso: true, reserva } ou { sucesso: false, erro }.
  *
- * @param {{ salaId: number, inicio: Date, fim: Date }} pedido
+ * @param {{ salaId: string, inicio: Date, fim: Date }} pedido  salaId: UUID da sala
  * @param {import("./repositorio").Repositorio} repositorio
  */
 export async function reservarSala({ salaId, inicio, fim }, repositorio) {
@@ -45,6 +45,8 @@ export async function reservarSala({ salaId, inicio, fim }, repositorio) {
     if (erro instanceof ErroSobreposicao) {
       return { sucesso: false, erro: ERRO_OCUPADA };
     }
+    // Regista a causa no servidor; as mensagens da persistência já vêm sem segredos.
+    console.error("Reservar sala: falha no repositório:", erro?.message ?? erro);
     return { sucesso: false, erro: ERRO_REPOSITORIO };
   }
 }

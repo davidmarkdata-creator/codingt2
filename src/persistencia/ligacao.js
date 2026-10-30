@@ -1,3 +1,4 @@
+import tls from "node:tls";
 import pg from "pg";
 import { criarTunel, interpretarProxy } from "./tunelProxy.js";
 
@@ -47,14 +48,37 @@ function erroLimpo(erro, limpar) {
   return novo;
 }
 
+// Depois do pedido de SSL, o pg troca o stream da ligação por um TLSSocket.
+function lerInfoTls(stream) {
+  if (!(stream instanceof tls.TLSSocket)) {
+    return { cifrada: false, protocolo: null, cifra: null, certificadoConfirmado: false };
+  }
+  return {
+    cifrada: true,
+    protocolo: stream.getProtocol() ?? null,
+    cifra: stream.getCipher()?.name ?? null,
+    certificadoConfirmado: stream.authorized === true,
+  };
+}
+
 /**
  * Cria a ligação ao PostgreSQL. O endereço vem de `databaseUrl` ou do
  * DATABASE_URL; o certificado do Aiven vem de `caCert` ou do DATABASE_CA_CERT.
  * A ligação é sempre cifrada e verifica sempre o certificado.
  * Com `proxy` ou DATABASE_PROXY, cada ligação passa por um túnel no proxy HTTP.
  *
+ * `comCliente(funcao)` reserva uma só ligação do pool (para transações e para
+ * `infoTls()`) e devolve-a sempre no fim, mesmo em caso de erro.
+ *
  * @param {{ databaseUrl?: string, caCert?: string, proxy?: string }} [opcoes]
- * @returns {{ consultar: (sql: string, parametros?: unknown[]) => Promise<import("pg").QueryResult>, fechar: () => Promise<void> }}
+ * @returns {{
+ *   consultar: (sql: string, parametros?: unknown[]) => Promise<import("pg").QueryResult>,
+ *   comCliente: <T>(funcao: (cliente: {
+ *     consultar: (sql: string, parametros?: unknown[]) => Promise<import("pg").QueryResult>,
+ *     infoTls: () => { cifrada: boolean, protocolo: string | null, cifra: string | null, certificadoConfirmado: boolean },
+ *   }) => Promise<T>) => Promise<T>,
+ *   fechar: () => Promise<void>,
+ * }}
  */
 export function criarLigacao({ databaseUrl, caCert, proxy } = {}) {
   const endereco = databaseUrl ?? process.env.DATABASE_URL;
@@ -100,6 +124,36 @@ export function criarLigacao({ databaseUrl, caCert, proxy } = {}) {
         return await pool.query(sql, parametros);
       } catch (erro) {
         throw erroLimpo(erro, limpar);
+      }
+    },
+
+    async comCliente(funcao) {
+      let cliente;
+      try {
+        cliente = await pool.connect();
+      } catch (erro) {
+        throw erroLimpo(erro, limpar);
+      }
+
+      let falhou = false;
+      try {
+        return await funcao({
+          async consultar(sql, parametros) {
+            try {
+              return await cliente.query(sql, parametros);
+            } catch (erro) {
+              throw erroLimpo(erro, limpar);
+            }
+          },
+          infoTls: () => lerInfoTls(cliente.connection?.stream),
+        });
+      } catch (erro) {
+        falhou = true;
+        throw erro;
+      } finally {
+        // Em caso de erro, o estado da ligação é incerto: o pool fecha-a em vez
+        // de a reutilizar (o PostgreSQL anula então qualquer transação aberta).
+        cliente.release(falhou ? true : undefined);
       }
     },
 

@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run --passWithNoTests",
-    "migrar": "node --env-file=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/persistencia/migrar.js"
+    "migrar": "node --env-file=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/persistencia/migrar.js",
+    "verificar-ligacao": "node --env-file=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/persistencia/verificarLigacao.js",
+    "test:postgres": "vitest run --mode postgres src/persistencia/repositorioPostgres.contrato.test.js"
   },
   "dependencies": {
     "next": "16.4.3",

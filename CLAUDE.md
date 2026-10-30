@@ -4,6 +4,7 @@
 - Next.js (App Router), JavaScript, Tailwind CSS.
 - Deploy: Vercel.
 - Base de dados: PostgreSQL no Aiven.
+- A app usa o repositório PostgreSQL (`src/persistencia/repositorioPostgres.js`), criado em `src/app/actions.js`. O repositório em memória fica só para os testes de contrato.
 - Consultar a documentação do Next.js instalado (`node_modules/next/dist/docs/`) quando for necessário. O projeto tem `cacheComponents` ativo: não usar configuração de segmento como `export const dynamic`.
 
 ## Arquitetura em 4 camadas
@@ -24,7 +25,7 @@ A app está organizada em: apresentação, aplicacional, dominio e persistencia.
 - As Server Actions ficam em `src/app/actions.js` e devolvem ao browser só dados simples, nunca entidades nem `Date`. Depois de as alterar, confirmar que o código do servidor não aparece no JavaScript enviado ao browser.
 
 ## Datas e horas
-- No domínio e na camada aplicacional, as datas são `Date` em UTC.
+- No domínio e na camada aplicacional, as datas são `Date` em UTC. Na base de dados, as datas são `TIMESTAMPTZ`.
 - A conversão da hora de Lisboa faz-se só na apresentação (`src/app/horaLisboa.js`): uma hora que não existe (mudança de março) dá erro; uma hora repetida (mudança de outubro) usa a primeira ocorrência.
 
 ## Interface
@@ -36,11 +37,15 @@ A app está organizada em: apresentação, aplicacional, dominio e persistencia.
 ## Segurança
 - As variáveis de ambiente sensíveis e respetivas credenciais de acesso (`DATABASE_URL`, etc.) nunca aparecem em código do lado do cliente.
 - Nunca ler nem mostrar os valores de `.env.local`, só os nomes das variáveis.
+- A ligação ao PostgreSQL é feita só por `src/persistencia/ligacao.js`: sempre cifrada e com o certificado do Aiven verificado (`DATABASE_CA_CERT`); endereços, utilizadores e palavras-passe nunca aparecem em mensagens nem em registos.
+- As consultas usam sempre parâmetros, nunca valores colados no SQL.
+- `DATABASE_ADMIN_URL` só existe no computador do programador, para `npm run migrar`: nunca na Vercel nem no código da app, que usa o `DATABASE_URL` (`app_reservas`).
 
 ## Testes
 - A lógica de domínio, aplicacional e persistência só está concluída com testes validados. Um `npm run test` sem testes não conta como validação: cada regra de domínio e caso de uso precisa de testes próprios.
 - Nessas camadas, escrever primeiro os testes e mostrá-los a falhar antes de implementar.
 - Não alterar os testes somente para os fazer validar. Para alterar um teste existente por outro motivo, explicar porquê antes de o fazer.
+- `npm run test` não liga à base de dados; o contrato do repositório PostgreSQL corre com `npm run test:postgres`.
 
 ## Fluxo de trabalho
 - Antes de implementar, apresentar sempre um plano curto e esperar pela aprovação explícita. Os passos que o pedido indica explicitamente já contam como aprovados; decisões importantes que o pedido não tome, ou trabalho fora do âmbito, continuam a precisar de aprovação. Só se dispensa a aprovação em correções mesmo simples.

@@ -23,6 +23,13 @@ A app está organizada em: apresentação, aplicacional, dominio e persistencia.
 ### Casos de uso e Server Actions
 - Os erros de negócio (ex.: sala ocupada) devolvem-se como resultado — `{ sucesso: true, ... }` ou `{ sucesso: false, erro }` — com a mensagem em português de Portugal, e não como exceção.
 - As Server Actions ficam em `src/app/actions.js` e devolvem ao browser só dados simples, nunca entidades nem `Date`. Depois de as alterar, confirmar que o código do servidor não aparece no JavaScript enviado ao browser.
+- As falhas esperadas (configuração, ligação, base de dados) devolvem `{ sucesso: false, erro }` com uma mensagem genérica, sem lançar exceção para o browser. Não usar `catch` genéricos que escondam erros de programação.
+- Uma falha técnica apanhada num `catch` é registada no servidor (`console.error`, com a mensagem já limpa) antes de devolver a mensagem genérica; nunca vai para o browser.
+
+## Regras de negócio e integridade dos dados
+- As regras de negócio vivem no domínio. As que podem ser contornadas por pedidos simultâneos ou por outra via de escrita são também garantidas na base de dados (`CHECK`, `EXCLUDE`) ou na própria instrução SQL (ex.: `DELETE … WHERE inicio > $2`).
+- Regras atuais das reservas, a manter e protegidas por testes: o fim é depois do início; no máximo 2 horas; sem sobreposição na mesma sala, em `[início, fim)` (reservas seguidas são permitidas); só se cancelam reservas futuras.
+- Os ids de salas e reservas são UUID em texto: nunca se convertem em número e comparam-se sempre como texto.
 
 ## Datas e horas
 - No domínio e na camada aplicacional, as datas são `Date` em UTC. Na base de dados, as datas são `TIMESTAMPTZ`.
@@ -40,12 +47,17 @@ A app está organizada em: apresentação, aplicacional, dominio e persistencia.
 - A ligação ao PostgreSQL é feita só por `src/persistencia/ligacao.js`: sempre cifrada e com o certificado do Aiven verificado (`DATABASE_CA_CERT`); endereços, utilizadores e palavras-passe nunca aparecem em mensagens nem em registos.
 - As consultas usam sempre parâmetros, nunca valores colados no SQL.
 - `DATABASE_ADMIN_URL` só existe no computador do programador, para `npm run migrar`: nunca na Vercel nem no código da app, que usa o `DATABASE_URL` (`app_reservas`).
+- Alterar dados ou a estrutura no Aiven (migrações, `DELETE`, testes que gravam) só com autorização explícita. As verificações de dados fazem-se só com `SELECT`, numa transação só de leitura.
+- Antes de acrescentar uma restrição à base de dados, confirmar por leitura que os dados existentes a cumprem; se não cumprirem, resolver primeiro, com autorização.
 
 ## Testes
 - A lógica de domínio, aplicacional e persistência só está concluída com testes validados. Um `npm run test` sem testes não conta como validação: cada regra de domínio e caso de uso precisa de testes próprios.
 - Nessas camadas, escrever primeiro os testes e mostrá-los a falhar antes de implementar.
 - Não alterar os testes somente para os fazer validar. Para alterar um teste existente por outro motivo, explicar porquê antes de o fazer.
 - `npm run test` não liga à base de dados; o contrato do repositório PostgreSQL corre com `npm run test:postgres`.
+- Um defeito corrigido fica com um teste que o reproduz, escrito antes da correção e mantido depois.
+- Testes que dependem da hora atual usam um relógio fixo.
+- Testes que gravam no Aiven usam dados isolados (ex.: em 2099, sem horários sobrepostos entre si), só começam se essa janela estiver vazia e, no fim, apagam exclusivamente os ids que criaram, mesmo que falhem. Qualquer falha de limpeza ou registo inesperado é comunicado, nunca apagado.
 
 ## Fluxo de trabalho
 - Antes de implementar, apresentar sempre um plano curto e esperar pela aprovação explícita. Os passos que o pedido indica explicitamente já contam como aprovados; decisões importantes que o pedido não tome, ou trabalho fora do âmbito, continuam a precisar de aprovação. Só se dispensa a aprovação em correções mesmo simples.

@@ -1,13 +1,41 @@
+import { Suspense } from "react";
+import { connection } from "next/server";
 import Link from "next/link";
 import CartaoSala from "../components/CartaoSala";
+import { obterSalas } from "./actions";
 
-// Dados de exemplo fixos. Os ids têm de coincidir com src/persistencia/salasExemplo.js.
-const SALAS = [
-  { id: 1, nome: "Sala Atlântico", capacidade: 12 },
-  { id: 2, nome: "Sala Douro", capacidade: 6 },
-  { id: 3, nome: "Sala Tejo", capacidade: 20 },
-  { id: 4, nome: "Sala Mondego", capacidade: 4 },
-];
+const CLASSE_AVISO = "text-base text-zinc-600 sm:text-sm dark:text-zinc-400";
+const CLASSE_ERRO =
+  "rounded-lg bg-red-50 px-3 py-2 text-base text-red-700 sm:text-sm dark:bg-red-950/50 dark:text-red-300";
+
+// Salas lidas da base de dados em cada pedido (nunca durante o build).
+async function ListaSalas() {
+  await connection();
+  const resultado = await obterSalas();
+
+  if (!resultado.sucesso) {
+    return (
+      <p role="alert" className={CLASSE_ERRO}>
+        {resultado.erro}
+      </p>
+    );
+  }
+  if (resultado.salas.length === 0) {
+    return <p className={CLASSE_AVISO}>Ainda não há salas.</p>;
+  }
+  return (
+    <ul className="flex flex-col gap-3 sm:gap-4">
+      {resultado.salas.map((sala) => (
+        <CartaoSala
+          key={sala.id}
+          id={sala.id}
+          nome={sala.nome}
+          capacidade={sala.capacidade}
+        />
+      ))}
+    </ul>
+  );
+}
 
 export default function Home() {
   return (
@@ -27,16 +55,9 @@ export default function Home() {
             As minhas reservas →
           </Link>
         </header>
-        <ul className="flex flex-col gap-3 sm:gap-4">
-          {SALAS.map((sala) => (
-            <CartaoSala
-              key={sala.id}
-              id={sala.id}
-              nome={sala.nome}
-              capacidade={sala.capacidade}
-            />
-          ))}
-        </ul>
+        <Suspense fallback={<p className={CLASSE_AVISO}>A carregar salas…</p>}>
+          <ListaSalas />
+        </Suspense>
       </main>
     </div>
   );

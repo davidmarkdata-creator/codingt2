@@ -3,9 +3,14 @@
 // Ficheiro de composição: cria o repositório e entrega-o aos casos de uso.
 // É o único sítio da apresentação que importa de src/persistencia/.
 import { reservarSala } from "../aplicacional/reservarSala";
+import { listarSalas } from "../aplicacional/listarSalas";
+import { listarReservas } from "../aplicacional/listarReservas";
 import { criarLigacao } from "../persistencia/ligacao";
 import { criarRepositorioPostgres } from "../persistencia/repositorioPostgres";
-import { lisboaParaUtc } from "./horaLisboa";
+import { lisboaParaUtc, formatarEmLisboa } from "./horaLisboa";
+
+const ERRO_CARREGAR_SALAS = "Não foi possível carregar as salas.";
+const ERRO_CARREGAR_RESERVAS = "Não foi possível carregar as reservas.";
 
 // PostgreSQL no Aiven (DATABASE_URL, utilizador app_reservas). A ligação só é
 // criada quando é precisa, para o build não depender da base de dados.
@@ -35,4 +40,48 @@ export async function reservarSalaAction(_estadoAnterior, formData) {
   return resultado.sucesso
     ? { sucesso: true }
     : { sucesso: false, erro: resultado.erro };
+}
+
+// Leituras para as páginas: só dados simples (nada de entidades nem Date).
+// Se a base de dados falhar, devolvem uma mensagem sem detalhes da ligação.
+
+export async function obterSalas() {
+  try {
+    const salas = await listarSalas(obterRepositorio());
+    return {
+      sucesso: true,
+      salas: salas.map(({ id, nome, capacidade }) => ({ id, nome, capacidade })),
+    };
+  } catch {
+    return { sucesso: false, erro: ERRO_CARREGAR_SALAS };
+  }
+}
+
+export async function obterReservas() {
+  try {
+    const repositorio = obterRepositorio();
+    const [reservas, salas] = await Promise.all([
+      listarReservas(repositorio),
+      listarSalas(repositorio),
+    ]);
+    const nomePorSala = new Map(salas.map((sala) => [sala.id, sala.nome]));
+
+    return {
+      sucesso: true,
+      reservas: reservas.map((reserva) => {
+        // As datas são guardadas em UTC; mostram-se em hora de Lisboa.
+        const inicio = formatarEmLisboa(reserva.inicio);
+        const fim = formatarEmLisboa(reserva.fim);
+        return {
+          id: reserva.id,
+          nomeSala: nomePorSala.get(reserva.salaId) ?? "Sala desconhecida",
+          data: inicio.data,
+          inicio: inicio.hora,
+          fim: fim.hora,
+        };
+      }),
+    };
+  } catch {
+    return { sucesso: false, erro: ERRO_CARREGAR_RESERVAS };
+  }
 }

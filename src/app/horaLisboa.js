@@ -16,12 +16,27 @@ const formatador = new Intl.DateTimeFormat("en-GB", {
   hourCycle: "h23",
 });
 
-// Data e hora de parede em Lisboa para um instante UTC, no formato "AAAA-MM-DD HH:MM".
-function emLisboa(instante) {
-  const p = Object.fromEntries(
+function partesEmLisboa(instante) {
+  return Object.fromEntries(
     formatador.formatToParts(instante).map(({ type, value }) => [type, value])
   );
+}
+
+// Data e hora de parede em Lisboa para um instante UTC, no formato "AAAA-MM-DD HH:MM".
+function emLisboa(instante) {
+  const p = partesEmLisboa(instante);
   return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
+}
+
+/**
+ * Data ("dd/mm/aaaa") e hora ("HH:MM") de Lisboa para mostrar um instante UTC.
+ *
+ * @param {Date} instante
+ * @returns {{ data: string, hora: string }}
+ */
+export function formatarEmLisboa(instante) {
+  const p = partesEmLisboa(instante);
+  return { data: `${p.day}/${p.month}/${p.year}`, hora: `${p.hour}:${p.minute}` };
 }
 
 /**

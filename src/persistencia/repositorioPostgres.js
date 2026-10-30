@@ -1,5 +1,6 @@
 import { Sala } from "../dominio/sala.js";
 import { Reserva } from "../dominio/reserva.js";
+import { ErroSobreposicao } from "../dominio/erros.js";
 
 // Repositório PostgreSQL: cumpre a mesma interface que o repositório em memória
 // (src/aplicacional/repositorio.js) e passa nos mesmos testes de contrato.
@@ -15,6 +16,10 @@ const SQL_LISTAR_RESERVAS_DA_SALA =
 
 const SQL_GUARDAR_RESERVA =
   "INSERT INTO reservas (sala_id, inicio, fim) VALUES ($1, $2, $3) RETURNING id, sala_id, inicio, fim";
+
+// 23P01 = violação de uma restrição EXCLUDE.
+const VIOLACAO_EXCLUSAO = "23P01";
+const RESTRICAO_SEM_SOBREPOSICAO = "reservas_sem_sobreposicao";
 
 function paraSala(linha) {
   return new Sala({ id: linha.id, nome: linha.nome, capacidade: linha.capacidade });
@@ -53,12 +58,20 @@ export function criarRepositorioPostgres(ligacao) {
 
     // O id é gerado pela base de dados (UUID); o da reserva recebida é ignorado.
     async guardarReserva(reserva) {
-      const { rows } = await ligacao.consultar(SQL_GUARDAR_RESERVA, [
-        reserva.salaId,
-        reserva.inicio,
-        reserva.fim,
-      ]);
-      return paraReserva(rows[0]);
+      try {
+        const { rows } = await ligacao.consultar(SQL_GUARDAR_RESERVA, [
+          reserva.salaId,
+          reserva.inicio,
+          reserva.fim,
+        ]);
+        return paraReserva(rows[0]);
+      } catch (erro) {
+        // A base de dados recusou por sobreposição (ex.: pedidos simultâneos).
+        if (erro?.code === VIOLACAO_EXCLUSAO && erro.constraint === RESTRICAO_SEM_SOBREPOSICAO) {
+          throw new ErroSobreposicao();
+        }
+        throw erro;
+      }
     },
   };
 }

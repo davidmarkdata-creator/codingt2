@@ -25,7 +25,9 @@ const INSTANTES = [
   "2026-10-25T01:30:00.000Z", // depois da mudança de outubro
 ];
 
-const MEIA_HORA_MS = 30 * 60 * 1000;
+// Duração curta: os instantes acima estão a 30 minutos uns dos outros e as
+// reservas de teste não se podem sobrepor (o PostgreSQL recusa sobreposições).
+const UM_MINUTO_MS = 60 * 1000;
 
 export function descreverContratoRepositorio(nome, preparar) {
   describe(`contrato do repositório: ${nome}`, () => {
@@ -60,7 +62,12 @@ export function descreverContratoRepositorio(nome, preparar) {
       const fim = new Date("2026-11-03T11:00:00.000Z");
 
       const primeira = await guardar(sala.id, inicio, fim);
-      const segunda = await guardar(sala.id, inicio, fim);
+      // Horário seguinte (sem sobreposição), só para confirmar que o id é outro.
+      const segunda = await guardar(
+        sala.id,
+        new Date("2026-11-03T11:00:00.000Z"),
+        new Date("2026-11-03T12:00:00.000Z")
+      );
 
       expect(primeira.id).toBeDefined();
       expect(primeira.id).not.toBeNull();
@@ -105,7 +112,7 @@ export function descreverContratoRepositorio(nome, preparar) {
 
       for (const texto of INSTANTES) {
         const inicio = new Date(texto);
-        const fim = new Date(inicio.getTime() + MEIA_HORA_MS + 789);
+        const fim = new Date(inicio.getTime() + UM_MINUTO_MS + 789);
         const guardada = await guardar(sala.id, inicio, fim);
 
         const lidaDeTodas = await lerPorId(guardada.id);

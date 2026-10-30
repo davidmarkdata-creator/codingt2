@@ -42,9 +42,12 @@ function criarLimpeza(segredos) {
 }
 
 // Erro novo só com a mensagem limpa (sem "cause", que guardaria o original).
+// Mantém o código e o nome da restrição (ex.: 23P01 em reservas_sem_sobreposicao),
+// também limpo, para as camadas acima saberem que regra foi violada.
 function erroLimpo(erro, limpar) {
   const novo = new Error(limpar(erro?.message));
   if (erro?.code) novo.code = erro.code;
+  if (erro?.constraint) novo.constraint = limpar(erro.constraint);
   return novo;
 }
 

@@ -7,6 +7,12 @@ const ERRO_SEM_ENDERECO_ADMIN =
   "DATABASE_ADMIN_URL não está definido: não é possível correr a migração.";
 const ERRO_SEM_APP_RESERVAS =
   "O utilizador app_reservas não existe no Aiven: crie-o na consola antes de correr a migração.";
+const ERRO_RESERVAS_INVALIDAS =
+  "Existem reservas com fim antes do início: apague-as antes de correr a migração.";
+const RESTRICAO_FIM_DEPOIS_DO_INICIO = "reservas_fim_depois_do_inicio";
+const ERRO_RESERVAS_SOBREPOSTAS =
+  "Existem reservas sobrepostas na mesma sala: resolva-as antes de correr a migração.";
+const RESTRICAO_SEM_SOBREPOSICAO = "reservas_sem_sobreposicao";
 
 // Enviado numa só consulta: corre numa só ligação e, se algum passo falhar,
 // nada fica aplicado.
@@ -29,6 +35,27 @@ CREATE TABLE IF NOT EXISTS reservas (
 INSERT INTO salas (nome, capacidade)
 VALUES ('Sala A', 12), ('Sala B', 6), ('Sala C', 20)
 ON CONFLICT (nome) DO NOTHING;
+
+-- Última barreira: o fim de uma reserva tem de ser depois do início.
+-- Só é criada se ainda não existir; falha (23514) se houver reservas inválidas.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'reservas_fim_depois_do_inicio') THEN
+    ALTER TABLE reservas ADD CONSTRAINT reservas_fim_depois_do_inicio CHECK (fim > inicio);
+  END IF;
+END $$;
+
+-- Garantia contra pedidos simultâneos: duas reservas da mesma sala não se podem
+-- sobrepor. Intervalo [início, fim): reservas seguidas continuam permitidas.
+-- Precisa do CHECK acima (tstzrange exige início <= fim). Só é criada se ainda
+-- não existir; falha (23P01) se houver reservas sobrepostas.
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'reservas_sem_sobreposicao') THEN
+    ALTER TABLE reservas ADD CONSTRAINT reservas_sem_sobreposicao EXCLUDE USING gist (sala_id WITH =, tstzrange(inicio, fim, '[)') WITH &&);
+  END IF;
+END $$;
 
 -- 1) Verificações do app_reservas: o que GRANT/REVOKE não controla.
 DO $$
@@ -106,6 +133,19 @@ export async function executarMigracao(ligacao) {
     // 42704 = objeto não existe (aqui, o papel app_reservas).
     if (erro?.code === "42704" && /app_reservas/.test(erro.message)) {
       throw new Error(ERRO_SEM_APP_RESERVAS);
+    }
+    // 23514 = violação de CHECK; só esta restrição tem a mensagem própria.
+    if (erro?.code === "23514" && erro.message?.includes(RESTRICAO_FIM_DEPOIS_DO_INICIO)) {
+      throw new Error(ERRO_RESERVAS_INVALIDAS);
+    }
+    // 23P01 = violação de EXCLUDE; só esta restrição tem a mensagem própria. Ao criar
+    // a restrição, o nome vem na propriedade `constraint` ou, pelo menos, na mensagem.
+    if (
+      erro?.code === "23P01" &&
+      (erro.constraint === RESTRICAO_SEM_SOBREPOSICAO ||
+        erro.message?.includes(`"${RESTRICAO_SEM_SOBREPOSICAO}"`))
+    ) {
+      throw new Error(ERRO_RESERVAS_SOBREPOSTAS);
     }
     throw erro;
   }

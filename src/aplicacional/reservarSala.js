@@ -1,8 +1,11 @@
 import { Reserva } from "../dominio/reserva";
 import { temSobreposicao } from "../dominio/sobreposicao";
 import { excedeDuracaoMaxima } from "../dominio/duracao";
+import { temIntervaloInvalido } from "../dominio/intervalo";
+import { ErroSobreposicao } from "../dominio/erros";
 
 const ERRO_SALA_INEXISTENTE = "Sala não encontrada.";
+const ERRO_INTERVALO = "A hora de fim tem de ser depois da hora de início.";
 const ERRO_DURACAO = "A reserva não pode durar mais de 2 horas.";
 const ERRO_OCUPADA = "A sala já tem uma reserva nesse horário.";
 const ERRO_REPOSITORIO = "Não foi possível guardar a reserva.";
@@ -22,6 +25,10 @@ export async function reservarSala({ salaId, inicio, fim }, repositorio) {
     }
 
     const nova = new Reserva({ salaId, inicio, fim });
+    // Antes da duração e da sobreposição: um intervalo invertido escapa às duas.
+    if (temIntervaloInvalido(nova)) {
+      return { sucesso: false, erro: ERRO_INTERVALO };
+    }
     if (excedeDuracaoMaxima(nova)) {
       return { sucesso: false, erro: ERRO_DURACAO };
     }
@@ -33,7 +40,11 @@ export async function reservarSala({ salaId, inicio, fim }, repositorio) {
 
     const reserva = await repositorio.guardarReserva(nova);
     return { sucesso: true, reserva };
-  } catch {
+  } catch (erro) {
+    // Pedido simultâneo que a base de dados recusou: a sala ficou ocupada.
+    if (erro instanceof ErroSobreposicao) {
+      return { sucesso: false, erro: ERRO_OCUPADA };
+    }
     return { sucesso: false, erro: ERRO_REPOSITORIO };
   }
 }
